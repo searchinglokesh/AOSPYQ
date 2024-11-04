@@ -337,3 +337,115 @@ int main(int argc, char *argv[]) {
 Compile and run `server.c` and `client.c`. The client sends the filename, and the server responds with word frequencies.
 
 ---
+
+
+# More questions 
+---
+
+### 1) Drawbacks of Semaphores:
+
+- **No Ownership Mechanism**: Any process can perform a V (signal) operation, leading to potential misuse or accidental release.
+- **Possibility of Deadlocks**: No built-in mechanism to prevent or detect deadlocks.
+- **No Queuing**: Waiting processes are not queued in order, which can lead to priority inversion and unfair scheduling.
+- **No Timeout Mechanism**: Basic implementations lack a way for processes to wait with a timeout, limiting flexibility.
+- **Difficult Debugging**: Race conditions can be hard to debug due to concurrent access to shared semaphores.
+- **No Automatic Cleanup**: Semaphores do not clean up resources if a process terminates unexpectedly.
+- **Memory Overhead**: Managing multiple semaphores consumes additional memory.
+- **Risk of Priority Inversion**: Without priority inheritance, lower-priority processes can block higher-priority ones indefinitely.
+  
+### 2) Multiple Signal Instances:
+
+**Traditional Unix Behavior**:
+- Unix traditionally maintains only one pending signal of each type per process. If multiple instances of a signal are received before it’s handled, only one is preserved, and subsequent signals of the same type are lost.
+  
+**Improved Alternatives**:
+- **POSIX Real-Time Signals**: Real-time signals support queuing, so multiple signals of the same type are not lost.
+- **siginfo_t Structure**: Provides additional information about signals, including source and cause.
+- **Signal Masking**: Critical sections can mask specific signals, reducing the likelihood of loss.
+- **Signal Counting**: Maintains a count for each signal type, ensuring the handler processes every occurrence.
+
+### 3) Remote Procedure Call (RPC) Working:
+
+**Basic Workflow**:
+1. **Client Side**:
+   - Client calls a local stub procedure representing the server procedure.
+   - Stub marshals (packages) parameters and sends the request to the server.
+2. **Server Side**:
+   - Server stub receives the message, unmarshals (unpacks) parameters, and calls the actual procedure.
+   - The result is sent back to the client.
+3. **Core Components**:
+   - **Interface Definition Language (IDL)**: Describes remote procedure interfaces.
+   - **Client/Server Stubs**: Handle data marshalling and unmarshalling.
+   - **RPC Runtime Library**: Manages the communication process.
+   - **Network Protocols**: Transport messages between client and server.
+
+### 4) SVR4 Scheduler Details:
+
+1. **Scheduling Classes**:
+   - **Real-Time (RT)**: Fixed priorities (100-159) for time-critical tasks.
+   - **System (SYS)**: Priorities (60-99) for kernel and system processes.
+   - **Time-Sharing (TS)**: Priorities (0-59) for general user processes.
+   - **Interactive (IA)**: Adapts for interactive tasks with dynamic adjustment.
+
+2. **Priority Levels**:
+   - Global priorities from 0 to 159, assigned by class.
+   - Class-specific adjustments based on workload and responsiveness.
+  
+3. **Key Features**:
+   - **Multilevel Feedback Queues**: Adjusts priority dynamically based on recent CPU usage.
+   - **Preemptive Scheduling**: Higher-priority tasks preempt lower-priority ones.
+   - **Dynamic Time Quantum**: Adjusts based on process behavior.
+   - **Priority Inheritance**: Minimizes priority inversion for critical real-time tasks.
+
+### 5) System V Message Queue Operations:
+
+**Function Prototypes**:
+```c
+key_t ftok(const char *pathname, int proj_id);
+int msgget(key_t key, int msgflg);
+int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg);
+ssize_t msgrcv(int msqid, void *msgp, size_t msgsz, long msgtyp, int msgflg);
+int msgctl(int msqid, int cmd, struct msqid_ds *buf);
+```
+
+**Example Usage**:
+```c
+#include <sys/msg.h>
+#include <stdio.h>
+#include <string.h>
+
+struct msgbuf {
+    long mtype;
+    char mtext[100];
+};
+
+int main() {
+    key_t key = ftok("/tmp", 'A');               // Generate unique key
+    int msgid = msgget(key, IPC_CREAT | 0666);   // Create message queue
+
+    struct msgbuf msg;                           // Prepare message
+    msg.mtype = 1;
+    strcpy(msg.mtext, "Test message");
+
+    msgsnd(msgid, &msg, sizeof(msg.mtext), 0);   // Send message
+
+    struct msgbuf rcv;                           // Receive message
+    msgrcv(msgid, &rcv, sizeof(rcv.mtext), 1, 0);
+
+    msgctl(msgid, IPC_RMID, NULL);               // Remove message queue
+
+    return 0;
+}
+```
+
+**Key Operations**:
+1. **`msgget()`**: Creates or accesses a message queue.
+2. **`msgsnd()`**: Sends a message to the queue.
+3. **`msgrcv()`**: Receives a message from the queue.
+4. **`msgctl()`**: Performs control operations on the queue, such as removal (`IPC_RMID`).
+
+**Common Flags**:
+- **IPC_CREAT**: Creates a new queue if it doesn’t exist.
+- **IPC_EXCL**: Fails if the queue already exists (used with `IPC_CREAT`).
+- **IPC_NOWAIT**: Non-blocking mode for `msgsnd` and `msgrcv`.
+- **IPC_RMID**: Removes the queue (used with `msgctl`).
